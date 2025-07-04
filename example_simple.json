@@ -1,18 +1,10 @@
 {
-  "type": "Feature",
   "geometry": {
-    "type": "Polygon",
-    "coordinates": [
-      [
-        [37.6173, 55.7558],
-        [37.6250, 55.7600],
-        [37.6300, 55.7500],
-        [37.6173, 55.7558]
-      ]
-    ]
+    "type": "Point",
+    "coordinates": [30.5, 50.5]
   },
   "properties": {
-    "name": "Парк",
-    "type": "area"
+    "name": "Test point",
+    "type": "Example"
   }
 }
