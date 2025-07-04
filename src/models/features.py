@@ -10,11 +10,13 @@ class FeaturesORM(BaseORM):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
     geometry: Mapped[Geometry] = mapped_column(
-        Geometry(geometry_type="POINT", srid=4326),
-        nullable=False
+        Geometry(
+            geometry_type="GEOMETRY",
+            srid=4326,
+            from_text="ST_GeomFromEWKT",
+            name="geometry",
+        ),
+        nullable=False,
     )
 
-    properties: Mapped[dict] = mapped_column(
-        JSONB,
-        nullable=False
-    )
+    properties: Mapped[dict] = mapped_column(JSONB, nullable=False)

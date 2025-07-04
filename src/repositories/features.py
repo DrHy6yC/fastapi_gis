@@ -9,6 +9,7 @@ from src.schemas.feature import FeatureRequest
 class FeatureRepository:
     mapper = FeatureMapper
     model = FeaturesORM
+
     def __init__(self, session: AsyncSession):
         self.session = session
 

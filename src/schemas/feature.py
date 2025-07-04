@@ -1,10 +1,10 @@
 from pydantic import BaseModel, Field
-from typing import Literal, List
+from typing import Literal, List, Union
 
 
 class Geometry(BaseModel):
-    type: Literal["Point"] = Field(description="GeoJSON geometry type")
-    coordinates: List[float] = Field(description="Longitude and latitude")
+    type: Literal["Point", "LineString", "Polygon"]
+    coordinates: Union[List[float], List[List[float]], List[List[List[float]]]]
 
 
 class FeatureProperties(BaseModel):

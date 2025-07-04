@@ -1,0 +1,18 @@
+{
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+      [
+        [38.973, 45.033],
+        [38.979, 45.033],
+        [38.979, 45.037],
+        [38.973, 45.037],
+        [38.973, 45.033]
+      ]
+    ]
+  },
+  "properties": {
+    "name": "Test Polygon",
+    "type": "Example"
+  }
+}

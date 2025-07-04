@@ -1,0 +1,14 @@
+{
+  "geometry": {
+    "type": "LineString",
+    "coordinates": [
+      [38.974, 45.032],
+      [38.976, 45.035],
+      [38.980, 45.038]
+    ]
+  },
+  "properties": {
+    "name": "Test LineString",
+    "type": "Example"
+  }
+}
