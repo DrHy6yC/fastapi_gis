@@ -23,8 +23,8 @@ async def create_feature(
 
 
 @router.get(path="/", summary="Получение всех объектов")
-async def get_all_features(db: DBDep,) -> FeatureCollection:
-     return await db.feature.get_all()
+async def get_feature_collection(db: DBDep,) -> FeatureCollection:
+     return await db.feature.get_feature_collection()
 
 
 @router.delete(path="/{feature_id}", summary="Удаление объекта")
