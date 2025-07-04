@@ -1,4 +1,4 @@
-from typing import Literal, Union
+from typing import Any, Literal, Union
 
 from pydantic import BaseModel
 
@@ -16,3 +16,14 @@ class FeatureProperties(BaseModel):
 class FeatureRequest(BaseModel):
     geometry: Geometry
     properties: FeatureProperties
+
+
+class FeaturesResponse(BaseModel):
+    type: str = "Feature"
+    geometry: dict[str, Any]
+    properties: FeatureProperties
+
+
+class FeatureCollection(BaseModel):
+    type: str = "FeatureCollection"
+    features: list[FeaturesResponse]

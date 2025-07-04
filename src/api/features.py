@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Body, Path
 from src.api.dependencies import DBDep
 from src.openapi_examples import LineString, Point, Polygon
-from src.schemas.feature import FeatureRequest
+from src.schemas.feature import FeatureCollection, FeatureRequest
 from src.schemas.message import Message
 
 router = APIRouter(prefix="/features", tags=["Управление геометрией"])
@@ -23,8 +23,8 @@ async def create_feature(
 
 
 @router.get(path="/", summary="Получение всех объектов")
-async def get_all_features():
-    pass
+async def get_all_features(db: DBDep,) -> FeatureCollection:
+     return await db.feature.get_all()
 
 
 @router.delete(path="/{feature_id}", summary="Удаление объекта")

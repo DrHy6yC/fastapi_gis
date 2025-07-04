@@ -8,7 +8,6 @@ class FeaturesORM(BaseORM):
     __tablename__ = "features"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-
     geometry: Mapped[Geometry] = mapped_column(
         Geometry(
             geometry_type="GEOMETRY",

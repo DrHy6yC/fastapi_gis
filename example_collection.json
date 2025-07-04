@@ -5,11 +5,11 @@
       "type": "Feature",
       "geometry": {
         "type": "Point",
-        "coordinates": [37.6173, 55.7558]
+        "coordinates": [38.976, 45.035]
       },
       "properties": {
-        "name": "Красная площадь",
-        "type": "landmark"
+        "name": "Краснодар",
+        "type": "Point"
       }
     },
     {
@@ -17,31 +17,31 @@
       "geometry": {
         "type": "LineString",
         "coordinates": [
-          [37.6173, 55.7558],
-          [37.6050, 55.7520]
+          [38.974, 45.032],
+          [38.976, 45.035],
+          [38.980, 45.038]
         ]
       },
       "properties": {
-        "name": "Маршрут A",
-        "type": "route"
+        "name": "Пример маршрута по Краснодару",
+        "type": "LineString"
       }
     },
     {
       "type": "Feature",
       "geometry": {
         "type": "Polygon",
-        "coordinates": [
-          [
-            [37.6173, 55.7558],
-            [37.6250, 55.7600],
-            [37.6300, 55.7500],
-            [37.6173, 55.7558]
-          ]
-        ]
+        "coordinates": [[
+          [38.973, 45.033],
+          [38.979, 45.033],
+          [38.979, 45.037],
+          [38.973, 45.037],
+          [38.973, 45.033]
+        ]]
       },
       "properties": {
-        "name": "Парк",
-        "type": "area"
+        "name": "Центральная зона Краснодара",
+        "type": "Polygon"
       }
     }
   ]

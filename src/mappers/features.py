@@ -1,7 +1,7 @@
-from geoalchemy2.shape import from_shape
+from geoalchemy2.shape import from_shape, to_shape
 from shapely.geometry import shape
 from src.models.features import FeaturesORM
-from src.schemas.feature import FeatureRequest
+from src.schemas.feature import FeatureRequest, FeaturesResponse
 
 
 class FeatureMapper:
@@ -13,4 +13,14 @@ class FeatureMapper:
         geoalchemy_geom = from_shape(shapely_geom, srid=4326)  # -> WKBElement
         return FeaturesORM(
             geometry=geoalchemy_geom, properties=schema.properties.model_dump()
+        )
+
+    @staticmethod
+    def to_feature(feature) -> FeaturesResponse:
+        shapely_geom = to_shape(feature.geometry)
+        geojson_geom = shapely_geom.__geo_interface__
+
+        return FeaturesResponse(
+            geometry=geojson_geom,
+            properties=feature.properties,
         )
