@@ -2,7 +2,6 @@ from typing import Annotated
 
 from fastapi import Depends
 from src.connectors.database_init import async_session_maker
-
 from src.managers.db_manager import DBManager
 
 

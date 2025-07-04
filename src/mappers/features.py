@@ -1,7 +1,7 @@
-from shapely.geometry import shape
 from geoalchemy2.shape import from_shape
-from src.schemas.feature import FeatureRequest
+from shapely.geometry import shape
 from src.models.features import FeaturesORM
+from src.schemas.feature import FeatureRequest
 
 
 class FeatureMapper:

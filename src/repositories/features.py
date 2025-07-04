@@ -1,6 +1,5 @@
+from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import delete, insert
-
 from src.mappers.features import FeatureMapper
 from src.models.features import FeaturesORM
 from src.schemas.feature import FeatureRequest

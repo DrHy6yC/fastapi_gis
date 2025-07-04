@@ -1,10 +1,8 @@
 from fastapi import APIRouter, Body, Path
-
 from src.api.dependencies import DBDep
-from src.openapi_examples import Polygon, Point, LineString
+from src.openapi_examples import LineString, Point, Polygon
 from src.schemas.feature import FeatureRequest
 from src.schemas.message import Message
-
 
 router = APIRouter(prefix="/features", tags=["Управление геометрией"])
 
@@ -16,11 +14,7 @@ router = APIRouter(prefix="/features", tags=["Управление геомет�
 async def create_feature(
     db: DBDep,
     data: FeatureRequest = Body(
-        openapi_examples={
-            "1": Point,
-            "2": LineString,
-            "3": Polygon
-        },
+        openapi_examples={"1": Point, "2": LineString, "3": Polygon},
     ),
 ) -> int:
     feature_id = await db.feature.add(data)
@@ -35,8 +29,7 @@ async def get_all_features():
 
 @router.delete(path="/{feature_id}", summary="Удаление объекта")
 async def delete_feature(
-        db: DBDep,
-        feature_id: int = Path(description="Айди объекта")
+    db: DBDep, feature_id: int = Path(description="Айди объекта")
 ) -> Message:
     await db.feature.delete(id=feature_id)
     await db.commit()

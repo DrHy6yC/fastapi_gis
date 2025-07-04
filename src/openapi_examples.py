@@ -16,13 +16,10 @@ LineString = Example(
             "coordinates": [
                 [38.974, 45.032],
                 [38.976, 45.035],
-                [38.980, 45.038]
-            ]
+                [38.980, 45.038],
+            ],
         },
-        "properties": {
-            "name": "Test LineString",
-            "type": "Example"
-        }
+        "properties": {"name": "Test LineString", "type": "Example"},
     },
 )
 
@@ -37,7 +34,7 @@ Polygon = Example(
                     [38.979, 45.033],
                     [38.979, 45.037],
                     [38.973, 45.037],
-                    [38.973, 45.033]
+                    [38.973, 45.033],
                 ]
             ],
         },

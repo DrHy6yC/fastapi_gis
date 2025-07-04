@@ -7,7 +7,6 @@ from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI
-
 from src.api.features import router as features_router
 
 
