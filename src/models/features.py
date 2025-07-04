@@ -1,32 +1,14 @@
-from typing import Any
-
-import geoalchemy2.shape as ga_shape
 from geoalchemy2 import Geometry
-from sqlalchemy import Column, Integer
-from src.connection.database_init import BaseORM
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import Mapped, mapped_column
+from src.connectors.database_init import BaseORM
 
 
-class GeoJSONFeature(BaseORM):
-    type: str
-    geometry: dict[str, Any]
-    properties: dict[str, Any] = {}
-
-
-class FeaturesORM(GeoJSONFeature):
+class FeaturesORM(BaseORM):
     __tablename__ = "features"
 
-    id = Column(Integer, primary_key=True, index=True)
-    feature = Column(
+    id: Mapped[int] = mapped_column(primary_key=True)
+    feature: Mapped[Geometry] = mapped_column(
         Geometry(geometry_type="GEOMETRY", srid=4326)
     )  # SRID 4326 - формат долгота, широта
-
-    def set_geojson(self, geojson: GeoJSONFeature):
-        """Конвертирует GeoJSON в объект Geometry"""
-        self.feature = ga_shape.from_shape(geojson.geometry, srid=4326)
-
-    def get_geojson(self) -> GeoJSONFeature:
-        """Конвертирует Geometry обратно в GeoJSON"""
-        shape = ga_shape.to_shape(self.feature)
-        return GeoJSONFeature(
-            type="Feature", geometry=shape.__geo_interface__, properties={}
-        )
+    properties: Mapped[dict] = mapped_column(JSONB)

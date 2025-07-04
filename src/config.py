@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     PG_USER: str = Field(default="")
     PG_PASSWORD: str = Field(default="")
     PG_DB_NAME: str = Field(default="")
+    PG_DATA: str = Field(default="")
 
     @property
     def db_url(self) -> str:
