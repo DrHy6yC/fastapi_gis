@@ -1,0 +1,48 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [37.6173, 55.7558]
+      },
+      "properties": {
+        "name": "Красная площадь",
+        "type": "landmark"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [37.6173, 55.7558],
+          [37.6050, 55.7520]
+        ]
+      },
+      "properties": {
+        "name": "Маршрут A",
+        "type": "route"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [37.6173, 55.7558],
+            [37.6250, 55.7600],
+            [37.6300, 55.7500],
+            [37.6173, 55.7558]
+          ]
+        ]
+      },
+      "properties": {
+        "name": "Парк",
+        "type": "area"
+      }
+    }
+  ]
+}
