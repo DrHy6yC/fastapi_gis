@@ -1,4 +1,6 @@
-from sqlalchemy import delete, select
+
+from geoalchemy2.functions import GeometryType
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.mappers.features import FeatureMapper
 from src.models.features import FeaturesORM
@@ -35,3 +37,26 @@ class FeatureRepository:
             ]
         )
         return features_collection
+
+    async def get_feature_count_by_type(self) -> dict:
+        query = (
+            select(
+                GeometryType(self.model.geometry).label("type"),
+                func.count("*").label("count"),
+            )
+            .select_from(self.model)
+            .group_by(GeometryType(self.model.geometry))
+        )
+        result_execute = await self.session.execute(query)
+        features_stats = result_execute.all()
+        stats = dict()
+        # Переделал пример как в примере
+        for feature in features_stats:
+            if feature.type == "POINT":
+                _type = "points"
+            elif feature.type == "LINESTRING":
+                _type = "lines"
+            else:
+                _type = "polygons"
+            stats[_type] = feature.count
+        return stats

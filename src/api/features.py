@@ -8,7 +8,7 @@ router = APIRouter(prefix="/features", tags=["Управление геомет�
 
 
 @router.post(
-    path="/",
+    path="",
     summary="Добавление объекта",
 )
 async def create_feature(
@@ -22,9 +22,11 @@ async def create_feature(
     return feature_id
 
 
-@router.get(path="/", summary="Получение всех объектов")
-async def get_feature_collection(db: DBDep,) -> FeatureCollection:
-     return await db.feature.get_feature_collection()
+@router.get(path="", summary="Получение всех объектов")
+async def get_feature_collection(
+    db: DBDep,
+) -> FeatureCollection:
+    return await db.feature.get_feature_collection()
 
 
 @router.delete(path="/{feature_id}", summary="Удаление объекта")

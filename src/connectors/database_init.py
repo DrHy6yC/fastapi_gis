@@ -4,7 +4,7 @@ from src.config import settings
 
 engine = create_async_engine(
     url=settings.db_url,
-    echo=False,
+    echo=True,
 )
 
 
