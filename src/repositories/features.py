@@ -1,7 +1,9 @@
-
 from geoalchemy2.functions import GeometryType
 from sqlalchemy import delete, func, select
+from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.exeptions.error import ObjectNotFoundError
 from src.mappers.features import FeatureMapper
 from src.models.features import FeaturesORM
 from src.schemas.feature import (
@@ -24,8 +26,15 @@ class FeatureRepository:
         return feature.id
 
     async def delete(self, **filter_by) -> None:
-        delete_model_stmt = delete(self.model).filter_by(**filter_by)
-        await self.session.execute(delete_model_stmt)
+        query = select(self.model).filter_by(**filter_by)
+        result = await self.session.execute(query)
+        try:
+            feature_result = result.scalar_one()
+        except NoResultFound:
+            raise ObjectNotFoundError
+        if feature_result:
+            delete_model_stmt = delete(self.model).filter_by(**filter_by)
+            await self.session.execute(delete_model_stmt)
 
     async def get_feature_collection(self) -> FeatureCollection:
         query = select(self.model).select_from(self.model)
@@ -50,7 +59,7 @@ class FeatureRepository:
         result_execute = await self.session.execute(query)
         features_stats = result_execute.all()
         stats = dict()
-        # Переделал пример как в примере
+        # Переделал json под пример
         for feature in features_stats:
             if feature.type == "POINT":
                 _type = "points"
