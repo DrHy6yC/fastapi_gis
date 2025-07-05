@@ -1,0 +1,7 @@
+[general]
+name=SyncPlugin
+description=Синхронизация геоданных с REST API
+version=1.0
+qgisMinimumVersion=3.0
+author=DrHy6yC
+email=dr.hy6yc@gmail.com

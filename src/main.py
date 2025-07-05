@@ -1,4 +1,5 @@
 import sys
+
 from pathlib import Path
 
 sys.path.append(str(Path(__file__).parent.parent))
@@ -6,6 +7,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 from contextlib import asynccontextmanager
 
 import uvicorn
+
 from fastapi import FastAPI
 from src.api.features import router as features_router
 from src.api.stats import router as stats_router

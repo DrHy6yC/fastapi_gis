@@ -11,6 +11,7 @@ from typing import Union
 
 import geoalchemy2
 import sqlalchemy as sa
+
 from alembic import op
 from sqlalchemy.dialects import postgresql
 

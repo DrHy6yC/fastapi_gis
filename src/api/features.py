@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Body, Path, status, HTTPException
+from fastapi import APIRouter, Body, HTTPException, Path, status
 from src.api.dependencies import DBDep
 from src.exeptions.error import ObjectNotFoundError
 from src.openapi_examples import LineString, Point, Polygon
 from src.schemas.feature import FeatureCollection, FeatureRequest
-from src.schemas.message import Message, MessageID
+from src.schemas.message import MessageID
 
 router = APIRouter(prefix="/features", tags=["Управление геометрией"])
 
@@ -31,12 +31,18 @@ async def get_feature_collection(
     return await db.feature.get_feature_collection()
 
 
-@router.delete(path="/{feature_id}", summary="Удаление объекта", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    path="/{feature_id}",
+    summary="Удаление объекта",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
 async def delete_feature(
     db: DBDep, feature_id: int = Path(description="Айди объекта")
 ) -> None:
     try:
         await db.feature.delete(id=feature_id)
     except ObjectNotFoundError as ex:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=ex.detail)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=ex.detail
+        )
     await db.commit()
