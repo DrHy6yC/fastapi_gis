@@ -47,7 +47,7 @@ class FeatureRepository:
         )
         return features_collection
 
-    async def get_feature_count_by_type(self) -> dict:
+    async def get_feature_count_by_type(self) -> dict[str, int]:
         query = (
             select(
                 GeometryType(self.model.geometry).label("type"),
