@@ -6,14 +6,17 @@ SyncPlugin — плагин QGIS для синхронизации вектор�
 
 Версия QGIS: >= 3.40
 """
+import os
+import requests
+from typing import Optional, Any, Dict, List
+
+from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction
 from qgis.PyQt.QtCore import QVariant
 from qgis.core import (
     QgsProject, QgsVectorLayer, QgsFeature, QgsGeometry,
     QgsPointXY, QgsField, QgsMessageLog, Qgis, QgsWkbTypes
 )
-import requests
-from typing import Optional, Any, Dict, List
 
 def classFactory(iface: Any) -> 'SyncPlugin':
     """
@@ -48,7 +51,9 @@ class SyncPlugin:
         """
         Добавляет кнопку на панель инструментов для запуска синхронизации.
         """
-        self.sync_action = QAction("Синхронизировать слои", self.iface.mainWindow())
+        icon_path = os.path.join(os.path.dirname(__file__), "icon.png")
+        icon = QIcon(icon_path)
+        self.sync_action = QAction(icon,"Синхронизировать слои", self.iface.mainWindow())
         self.sync_action.triggered.connect(self.sync_layers)
         self.iface.addToolBarIcon(self.sync_action)
 
