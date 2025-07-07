@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import QAction, QMessageBox
 from qgis.core import (
     QgsProject, QgsVectorLayer, QgsFeature, QgsGeometry,
-    QgsPointXY, QgsField, QgsMessageLog, Qgis
+    QgsPointXY, QgsField, QgsMessageLog, Qgis, QgsWkbTypes
 )
 from qgis.PyQt.QtCore import QVariant
 import requests
@@ -96,14 +96,18 @@ class MinimalSyncPlugin:
             for fid in deleted:
                 self._show_feature_action_message("удалён", feature_type, fid)
 
-    # Выполнение действий над объект
-    def on_features_added(self, layer, added_ids, feature_type):
-        for fid in added_ids:
-            self._show_feature_action_message("добавлен", feature_type, fid)
+    # Выполнение действий над объектом
+    def on_features_added(self, layer, added_features, feature_type):
+        for feature in added_features:
+            self.send_feature_to_api(feature)
 
     def on_features_removed(self, layer, removed_ids, feature_type):
         for fid in removed_ids:
-            self._show_feature_action_message("удалён", feature_type, fid)
+            self._show_feature_action_message(
+                "удален",
+                feature_type,
+                fid
+            )
 
     def on_features_modified(self, layer, changes, feature_type):
         for fid in changes:
@@ -115,6 +119,7 @@ class MinimalSyncPlugin:
 
     def on_geometry_modified(self, layer, changes, feature_type):
         for fid in changes:
+
             self._show_feature_action_message(
                 "изменён (геометрия)",
                 feature_type,
@@ -217,3 +222,84 @@ class MinimalSyncPlugin:
         vl.updateFields()
         QgsProject.instance().addMapLayer(vl)
         return vl
+
+    # Получить данные о добавляемом объекте
+    def feature_to_geojson_dict(self, feature: QgsFeature):
+        geom = feature.geometry()
+        if geom is None or geom.isEmpty():
+            return None
+
+        geom_type = QgsWkbTypes.displayString(geom.wkbType())
+
+        if geom_type.startswith("Point"):
+            geojson_type = "Point"
+            coords = list(geom.asPoint())
+        elif geom_type.startswith("LineString"):
+            geojson_type = "LineString"
+            coords = [list(pt) for pt in geom.asPolyline()]
+        elif geom_type.startswith("Polygon"):
+            geojson_type = "Polygon"
+            polygon = geom.asPolygon()
+            coords = [[list(pt) for pt in polygon[0]]] if polygon else []
+        else:
+            return None
+
+        # Извлечение атрибутов с приведением к Python-типам
+        name = feature["name"]
+        name = name if name is None or isinstance(
+            name,
+            (str, int, float)
+        ) else str(name)
+
+        type_ = feature["type"]
+        type_ = type_ if type_ is None or isinstance(
+            type_,
+            (str, int, float)
+        ) else str(type_)
+
+        return {
+            "geometry": {
+                "type": geojson_type,
+                "coordinates": coords
+            },
+            "properties": {
+                "name": name,
+                "type": type_
+            }
+        }
+
+    # Добавление объекта в API
+    def send_feature_to_api(self, feature: QgsFeature):
+        data = self.feature_to_geojson_dict(feature)
+        if not data:
+            QMessageBox.warning(
+                self.iface.mainWindow(),
+                "Ошибка",
+                "Не удалось сформировать объект для отправки."
+            )
+            return
+
+        try:
+            response = requests.post(
+                "http://localhost:8000/features",  # URL вашего API
+                json=data,
+                timeout=5
+            )
+            if response.status_code == 201:
+                QMessageBox.information(
+                    self.iface.mainWindow(),
+                    "Успешно",
+                    "Объект отправлен в API успешно."
+                )
+            else:
+                QMessageBox.warning(
+                    self.iface.mainWindow(),
+                    "Ошибка API",
+                    f"Код ответа: {response.status_code}\nТело: {response.text}"
+                )
+        except requests.RequestException as e:
+            QMessageBox.critical(
+                self.iface.mainWindow(),
+                "Сетевой сбой",
+                f"Ошибка при запросе:\n{str(e)}"
+            )
