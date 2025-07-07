@@ -29,6 +29,7 @@ class SyncPlugin:
         self.line_layer = None
         self.polygon_layer = None
         self.sync_action = None
+        self._ids = {}
 
     def initGui(self):
         """
@@ -103,6 +104,7 @@ class SyncPlugin:
                 continue
 
             success = layer.dataProvider().changeAttributeValues({feature.id(): {id_idx: _id}})
+            self._ids[feature.id()]=_id
             if success:
                 self._log(f"Добавлен объект типа «{geometry_type}» с ID {_id}")
             else:
@@ -118,8 +120,9 @@ class SyncPlugin:
         :param removed_ids: список ID удалённых объектов
         :param geometry_type: тип геометрии
         """
-        for feature_id in removed_ids:
-            self._log(f"Удалён объект типа «{geometry_type}» с ID {feature_id}")
+        for feature in removed_ids:
+            self._delete_feature_to_api(feature)
+            self._log(f"Удалён объект типа «{geometry_type}» с ID {feature}")
 
     def _on_features_modified(self, layer, attribute_changes, geometry_type):
         """
@@ -188,6 +191,7 @@ class SyncPlugin:
             geom_type = feature_data["geometry"]["type"]
             coordinates = feature_data["geometry"]["coordinates"]
             properties = feature_data.get("properties", {})
+            external_id = properties.get("id", 0)
             layer = geometry_type_to_layer.get(geom_type)
             if not layer:
                 self._log(f"Пропущен объект с типом геометрии {geom_type} — слой не найден.")
@@ -208,8 +212,17 @@ class SyncPlugin:
 
             qgs_feature.setAttribute("name", properties.get("name", ""))
             qgs_feature.setAttribute("type", properties.get("type", ""))
-            qgs_feature.setAttribute("id", properties.get("id", 0))
-            layer.dataProvider().addFeature(qgs_feature)
+            qgs_feature.setAttribute("id", external_id)
+            success = layer.dataProvider().addFeature(
+                qgs_feature)
+            if success:
+                internal_id = qgs_feature.id()
+                self._ids[internal_id] = external_id
+                self._log(
+                    f"Объект добавлен: QGIS-ID={internal_id} → API-ID={external_id}"
+                )
+            else:
+                self._log("Не удалось добавить объект в слой.")
 
         self._log("Слои успешно синхронизированы.")
 
@@ -310,25 +323,22 @@ class SyncPlugin:
         except requests.RequestException as error:
             self._log(f"Ошибка сети при отправке запроса: {error}")
 
-    def _delete_feature_to_api(self, feature: QgsFeature):
-        """
-        Отправляет объект в REST API.
 
-        :param feature: объект QgsFeature для отправки
+    def _delete_feature_to_api(self, internal_id_feature: int):
         """
-        data = self._feature_to_geojson_dict(feature)
-        if not data:
-            self._log("Не удалось сформировать объект для отправки в API.")
-            return
+        Удаляет объект в REST API.
 
+        :param internal_id_feature: внутренний id объекта для удаления
+        """
+        self._log(f"{self._ids=}")
+        feature_id = self._ids[internal_id_feature]
         try:
-            response = requests.post(
-                "http://localhost:8000/features",
-                json=data,
+            response = requests.delete(
+                f"http://localhost:8000/features/{feature_id}",
                 timeout=5,
             )
-            if response.status_code == 201:
-                self._log("Объект успешно отправлен в API.")
+            if response.status_code == 204:
+                self._log("Объект успешно удален в API.")
                 return response.json()["id"]
             else:
                 self._log(f"Ошибка API: код {response.status_code}, ответ: {response.text}")
