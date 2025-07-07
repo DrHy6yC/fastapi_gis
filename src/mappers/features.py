@@ -19,8 +19,9 @@ class FeatureMapper:
     def to_feature(feature) -> FeaturesResponse:
         shapely_geom = to_shape(feature.geometry)
         geojson_geom = shapely_geom.__geo_interface__
-
+        properties_id_dict = {"id": feature.id}
+        properties = {**feature.properties, **properties_id_dict}
         return FeaturesResponse(
             geometry=geojson_geom,
-            properties=feature.properties,
+            properties=properties,
         )

@@ -13,6 +13,10 @@ class FeatureProperties(BaseModel):
     type: str
 
 
+class FeaturePropertiesID(FeatureProperties):
+    id: int
+
+
 class FeatureRequest(BaseModel):
     geometry: Geometry
     properties: FeatureProperties
@@ -21,7 +25,7 @@ class FeatureRequest(BaseModel):
 class FeaturesResponse(BaseModel):
     type: str = "Feature"
     geometry: dict[str, Any]
-    properties: FeatureProperties
+    properties: FeaturePropertiesID
 
 
 class FeatureCollection(BaseModel):

@@ -200,6 +200,7 @@ class MinimalSyncPlugin:
                 )
             f.setAttribute("name", props.get("name", ""))
             f.setAttribute("type", props.get("type", ""))
+            f.setAttribute("id", props.get("id", ""))
             layer.dataProvider().addFeature(f)
 
         # Вывод сообщения об успешной загрузке
@@ -218,7 +219,8 @@ class MinimalSyncPlugin:
 
         field1 = QgsField(name="name", type=QVariant.String)
         field2 = QgsField(name="type", type=QVariant.String)
-        pr.addAttributes([field1, field2])
+        field3 = QgsField(name="id", type=QVariant.Int)
+        pr.addAttributes([field1, field2, field3])
         vl.updateFields()
         QgsProject.instance().addMapLayer(vl)
         return vl
@@ -246,15 +248,15 @@ class MinimalSyncPlugin:
 
         # Извлечение атрибутов с приведением к Python-типам
         name = feature["name"]
-        name = name if name is None or isinstance(
+        name = name if isinstance(
             name,
-            (str, int, float)
+            (str, int, float, type(None))
         ) else str(name)
 
         type_ = feature["type"]
-        type_ = type_ if type_ is None or isinstance(
+        type_ = type_ if isinstance(
             type_,
-            (str, int, float)
+            (str, int, float, type(None))
         ) else str(type_)
 
         return {

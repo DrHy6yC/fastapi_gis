@@ -9,7 +9,8 @@
       },
       "properties": {
         "name": "Краснодар",
-        "type": "Point"
+        "type": "Point",
+        "id": 1
       }
     },
     {
@@ -24,7 +25,8 @@
       },
       "properties": {
         "name": "Пример маршрута по Краснодару",
-        "type": "LineString"
+        "type": "LineString",
+        "id": 2
       }
     },
     {
@@ -41,7 +43,8 @@
       },
       "properties": {
         "name": "Центральная зона Краснодара",
-        "type": "Polygon"
+        "type": "Polygon",
+        "id": 3
       }
     }
   ]
