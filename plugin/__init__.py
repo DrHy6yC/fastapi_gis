@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import QAction, QMessageBox
 from qgis.core import (
     QgsProject, QgsVectorLayer, QgsFeature, QgsGeometry,
-    QgsPointXY, QgsField
+    QgsPointXY, QgsField, QgsMessageLog, Qgis
 )
 from qgis.PyQt.QtCore import QVariant
 import requests
@@ -25,6 +25,118 @@ class MinimalSyncPlugin:
         self.iface.removeToolBarIcon(self.action)
         # del self.action
 
+    # Подписка на события
+    def connect_layer_signals(self):
+        for layer, name in [
+            (self.point_layer, "Point"),
+            (self.line_layer, "Line"),
+            (self.polygon_layer, "Polygon")
+        ]:
+            if layer:
+                layer.editingStarted.connect(
+                    lambda l=layer, t=name: self._log(
+                        f"Начато редактирование слоя {t}"
+                    )
+                )
+
+                layer.committedFeaturesAdded.connect(
+                    lambda
+                            layer_id,
+                            added,
+                            l=layer,
+                            t=name: self.on_features_added(l, added, t)
+                )
+
+                layer.committedFeaturesRemoved.connect(
+                    lambda
+                            layer_id,
+                            removed,
+                            l=layer,
+                            t=name: self.on_features_removed(l, removed, t)
+                )
+
+                layer.committedAttributeValuesChanges.connect(
+                    lambda
+                            layer_id,
+                            attr_changes,
+                            l=layer,
+                            t=name: self.on_features_modified(
+                        l,
+                        attr_changes,
+                        t
+                    )
+                )
+
+                layer.committedGeometriesChanges.connect(
+                    lambda
+                            layer_id,
+                            geom_changes,
+                            l=layer,
+                            t=name: self.on_geometry_modified(
+                        l,
+                        geom_changes,
+                        t
+                    )
+                )
+
+    def on_editing_stopped(self, layer: QgsVectorLayer, feature_type: str):
+        changes = layer.editBuffer().changeSet()
+
+        added = list(layer.editBuffer().addedFeatures().keys())
+        deleted = list(layer.editBuffer().deletedFeatureIds())
+
+        if added:
+            for fid in added:
+                self._show_feature_action_message(
+                    "добавлен",
+                    feature_type,
+                    fid
+                )
+        if deleted:
+            for fid in deleted:
+                self._show_feature_action_message("удалён", feature_type, fid)
+
+    # Выполнение действий над объект
+    def on_features_added(self, layer, added_ids, feature_type):
+        for fid in added_ids:
+            self._show_feature_action_message("добавлен", feature_type, fid)
+
+    def on_features_removed(self, layer, removed_ids, feature_type):
+        for fid in removed_ids:
+            self._show_feature_action_message("удалён", feature_type, fid)
+
+    def on_features_modified(self, layer, changes, feature_type):
+        for fid in changes:
+            self._show_feature_action_message(
+                "изменён (атрибуты)",
+                feature_type,
+                fid
+            )
+
+    def on_geometry_modified(self, layer, changes, feature_type):
+        for fid in changes:
+            self._show_feature_action_message(
+                "изменён (геометрия)",
+                feature_type,
+                fid
+            )
+
+    # Отображение сообщения о событии
+    def _show_feature_action_message(
+            self,
+            action: str,
+            feature_type: str,
+            feature_id: int
+    ):
+        QMessageBox.information(
+            self.iface.mainWindow(),
+            "Событие в слое",
+            f"Объект типа «{feature_type}» был {action}. ID: {feature_id}"
+        )
+
+    def _log(self, message: str):
+        QgsMessageLog.logMessage(message, "MinimalSyncPlugin", level=Qgis.Info)
+
     def sync_layers(self):
         # Загрузка объектов из API
         try:
@@ -32,21 +144,31 @@ class MinimalSyncPlugin:
         except Exception as e:
             print("Ошибка запроса:", e)
             return
-        # Создать словарь слоев
+        # Получить или создать слои и сохранить в self
+        self.point_layer = self.get_or_create_layer("Points_synced", "Point")
+        self.line_layer = self.get_or_create_layer(
+            "Lines_synced",
+            "LineString"
+        )
+        self.polygon_layer = self.get_or_create_layer(
+            "Polygons_synced",
+            "Polygon"
+        )
+
         layers = {
-            "Point": self.get_or_create_layer("Points_synced", "Point"),
-            "LineString": self.get_or_create_layer(
-                "Lines_synced",
-                "LineString"
-            ),
-            "Polygon": self.get_or_create_layer("Polygons_synced", "Polygon"),
+            "Point": self.point_layer,
+            "LineString": self.line_layer,
+            "Polygon": self.polygon_layer,
         }
 
-        # Создание слоев в QGIS
+        # Очистить данные в слоях
         for layer in layers.values():
             layer.dataProvider().truncate()
 
-        # Парсинг объектов из запроса и добавление их в слои
+        # Подписка на события
+        self.connect_layer_signals()
+
+        # Добавление объектов
         for feat in data.get("features", []):
             geom_type = feat["geometry"]["type"]
             coords = feat["geometry"]["coordinates"]
@@ -88,12 +210,10 @@ class MinimalSyncPlugin:
                 return l
         vl = QgsVectorLayer(f"{geom}?crs=EPSG:4326", name, "memory")
         pr = vl.dataProvider()
-        pr.addAttributes(
-            [
-                QgsField("name", QVariant.String),
-                QgsField("type", QVariant.String)
-            ]
-        )
+
+        field1 = QgsField(name="name", type=QVariant.String)
+        field2 = QgsField(name="type", type=QVariant.String)
+        pr.addAttributes([field1, field2])
         vl.updateFields()
         QgsProject.instance().addMapLayer(vl)
         return vl
