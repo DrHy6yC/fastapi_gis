@@ -1,13 +1,21 @@
-from PyQt5.QtWidgets import QAction
+"""
+SyncPlugin — плагин QGIS для синхронизации векторных слоев с REST API.
+
+Поддерживает загрузку объектов из API, отображение на карте, а также отправку
+изменений (добавление и удаление объектов) обратно на сервер.
+
+Версия QGIS: >= 3.40
+"""
+from qgis.PyQt.QtWidgets import QAction
+from qgis.PyQt.QtCore import QVariant
 from qgis.core import (
     QgsProject, QgsVectorLayer, QgsFeature, QgsGeometry,
     QgsPointXY, QgsField, QgsMessageLog, Qgis, QgsWkbTypes
 )
-from qgis.PyQt.QtCore import QVariant
 import requests
+from typing import Optional, Any, Dict, List
 
-
-def classFactory(iface):
+def classFactory(iface: Any) -> 'SyncPlugin':
     """
     Фабричная функция для создания экземпляра плагина QGIS.
 
@@ -18,28 +26,33 @@ def classFactory(iface):
 
 
 class SyncPlugin:
-    def __init__(self, iface):
+    """
+    Класс плагина для синхронизации слоев QGIS с удалённым REST API.
+    Обеспечивает загрузку, создание и обновление векторных слоев, а также
+    взаимодействие с API при добавлении и удалении объектов.
+    """
+    def __init__(self, iface: Any) -> None:
         """
         Инициализация плагина.
 
         :param iface: интерфейс QGIS
         """
         self.iface = iface
-        self.point_layer = None
-        self.line_layer = None
-        self.polygon_layer = None
-        self.sync_action = None
-        self._ids: dict[QgsVectorLayer, dict[int, int]] = {}
+        self.point_layer: Optional[QgsVectorLayer] = None
+        self.line_layer: Optional[QgsVectorLayer] = None
+        self.polygon_layer: Optional[QgsVectorLayer] = None
+        self.sync_action: Optional[QAction] = None
+        self._ids: Dict[str, Dict[int, int]] = {}
 
-    def initGui(self):
+    def initGui(self) -> None:
         """
-        Добавляет кнопку на панель инструментов QGIS и связывает ее с функцией синхронизации слоев.
+        Добавляет кнопку на панель инструментов для запуска синхронизации.
         """
         self.sync_action = QAction("Синхронизировать слои", self.iface.mainWindow())
         self.sync_action.triggered.connect(self.sync_layers)
         self.iface.addToolBarIcon(self.sync_action)
 
-    def unload(self):
+    def unload(self) -> None:
         """
         Удаляет кнопку с панели инструментов при выгрузке плагина.
         """
@@ -47,9 +60,10 @@ class SyncPlugin:
             self.iface.removeToolBarIcon(self.sync_action)
             self.sync_action = None
 
-    def _connect_layer_signals(self):
+    def _connect_layer_signals(self) -> None:
         """
-        Подписывает обработчики событий на редактируемые слои для отслеживания изменений.
+        Подключает обработчики событий (добавление, удаление, редактирование)
+        к каждому из синхронизируемых слоев.
         """
         for layer, geometry_type in [
             (self.point_layer, "Point"),
@@ -67,144 +81,161 @@ class SyncPlugin:
                 layer.committedGeometriesChanges.disconnect()
                 layer.editingStopped.disconnect()
             except Exception:
-                pass  # В первый раз сигнал может быть не подключен
+                pass
 
-            layer.editingStarted.connect(
-                lambda l=layer, t=geometry_type: self._log(
-                    f"Начато редактирование слоя {t}"
-                )
-            )
+            layer.editingStarted.connect(self._make_editing_started_callback(layer, geometry_type))
+            layer.committedFeaturesAdded.connect(self._make_features_added_callback(layer, geometry_type))
+            layer.committedFeaturesRemoved.connect(self._make_features_removed_callback(layer, geometry_type))
+            layer.committedAttributeValuesChanges.connect(self._make_features_modified_callback(layer, geometry_type))
+            layer.committedGeometriesChanges.connect(self._make_geometry_modified_callback(layer, geometry_type))
+            layer.editingStopped.connect(self._make_editing_stopped_callback(layer, geometry_type))
 
-            layer.committedFeaturesAdded.connect(
-                lambda
-                        layer_id,
-                        added,
-                        l=layer,
-                        t=geometry_type: self._on_features_added(l, added, t)
-            )
-            layer.committedFeaturesRemoved.connect(
-                lambda
-                        layer_id,
-                        removed,
-                        l=layer,
-                        t=geometry_type: self._on_features_removed(
-                    l,
-                    removed,
-                    t
-                )
-            )
-            layer.committedAttributeValuesChanges.connect(
-                lambda
-                        layer_id,
-                        attr_changes,
-                        l=layer,
-                        t=geometry_type: self._on_features_modified(
-                    l,
-                    attr_changes,
-                    t
-                )
-            )
-            layer.committedGeometriesChanges.connect(
-                lambda
-                        layer_id,
-                        geom_changes,
-                        l=layer,
-                        t=geometry_type: self._on_geometry_modified(
-                    l,
-                    geom_changes,
-                    t
-                )
-            )
-            layer.editingStopped.connect(
-                lambda l=layer, t=geometry_type: self._log(
-                    f"Закончено редактирование слоя {t}"
-                )
-            )
-
-    def _on_features_added(self, layer, added_features, geometry_type):
+    def _make_editing_started_callback(self, layer: QgsVectorLayer, geometry_type: str):
         """
-        Обработка добавления новых объектов в слой.
+        Создает callback-функцию для события изменения геометрии объектов.
 
-        :param layer: слой, в который добавлены объекты
+        :param layer: слой QGIS
+        :param geometry_type: тип геометрии слоя
+        :return: callback-функция
+        """
+        def callback() -> None:
+            self._log(f"Начато редактирование слоя {geometry_type}")
+        return callback
+
+    def _make_editing_stopped_callback(self, layer: QgsVectorLayer, geometry_type: str):
+        """
+        Создает callback-функцию для события изменения геометрии объектов.
+
+        :param layer: слой QGIS
+        :param geometry_type: тип геометрии слоя
+        :return: callback-функция
+        """
+        def callback() -> None:
+            self._log(f"Закончено редактирование слоя {geometry_type}")
+        return callback
+
+    def _make_features_added_callback(self, layer: QgsVectorLayer, geometry_type: str):
+        """
+        Создает callback-функцию для события изменения геометрии объектов.
+
+        :param layer: слой QGIS
+        :param geometry_type: тип геометрии слоя
+        :return: callback-функция
+        """
+        def callback(layer_id: str, added: List[QgsFeature]) -> None:
+            self._on_features_added(layer, added, geometry_type)
+        return callback
+
+    def _make_features_removed_callback(self, layer: QgsVectorLayer, geometry_type: str):
+        """
+        Создает callback-функцию для события изменения геометрии объектов.
+
+        :param layer: слой QGIS
+        :param geometry_type: тип геометрии слоя
+        :return: callback-функция
+        """
+        def callback(layer_id: str, removed: List[int]) -> None:
+            self._on_features_removed(layer, removed, geometry_type)
+        return callback
+
+    def _make_features_modified_callback(self, layer: QgsVectorLayer, geometry_type: str):
+        """
+        Создает callback-функцию для события изменения геометрии объектов.
+
+        :param layer: слой QGIS
+        :param geometry_type: тип геометрии слоя
+        :return: callback-функция
+        """
+        def callback(layer_id: str, attr_changes: Dict[int, Dict[int, Any]]) -> None:
+            self._on_features_modified(layer, attr_changes, geometry_type)
+        return callback
+
+    def _make_geometry_modified_callback(self, layer: QgsVectorLayer, geometry_type: str):
+        """
+        Создает callback-функцию для события изменения геометрии объектов.
+
+        :param layer: слой QGIS
+        :param geometry_type: тип геометрии слоя
+        :return: callback-функция
+        """
+        def callback(layer_id: str, geom_changes: Dict[int, QgsGeometry]) -> None:
+            self._on_geometry_modified(layer, geom_changes, geometry_type)
+        return callback
+
+    def _on_features_added(self, layer: QgsVectorLayer, added_features: List[QgsFeature], geometry_type: str) -> None:
+        """
+        Обработчик события добавления объектов в слой.
+
+        :param layer: слой QGIS
         :param added_features: список добавленных объектов
-        :param geometry_type: тип геометрии ("Point", "LineString", "Polygon")
+        :param geometry_type: тип геометрии слоя
         """
         for feature in added_features:
             _id = self._send_feature_to_api(feature)
             if _id is None:
-                self._log(
-                    f"Не удалось получить ID от API для объекта типа «{geometry_type}»"
-                )
+                self._log(f"Не удалось получить ID от API для объекта типа "
+                          f"«{geometry_type}»", Qgis.Critical)
                 continue
             id_idx = layer.fields().indexFromName("id")
             if id_idx == -1:
-                self._log("Поле 'id' не найдено в слое.")
+                self._log("Поле 'id' не найдено в слое.", Qgis.Critical)
                 continue
 
             success = layer.dataProvider().changeAttributeValues({feature.id(): {id_idx: _id}})
             layer_name = layer.name()
             if layer_name not in self._ids:
                 self._ids[layer_name] = {}
-            self._ids[layer_name][feature.id()]=_id
+            self._ids[layer_name][feature.id()] = _id
             if success:
                 self._log(f"Добавлен объект типа «{geometry_type}» с ID {_id}")
             else:
-                self._log(
-                    f"Не удалось обновить ID объекта типа «{geometry_type}»"
-                )
+                self._log(f"Не удалось обновить ID объекта типа «"
+                          f"{geometry_type}»", Qgis.Critical)
 
-    def _on_features_removed(self, layer, removed_ids, geometry_type):
+    def _on_features_removed(self, layer: QgsVectorLayer, removed_ids: List[int], geometry_type: str) -> None:
         """
-        Обработка удаления объектов из слоя.
+       Обработчик события удаления объектов из слоя.
 
-        :param layer: слой, из которого удалены объекты
-        :param removed_ids: список ID удалённых объектов
-        :param geometry_type: тип геометрии
+       :param layer: слой QGIS
+       :param removed_ids: список ID удаленных объектов
+       """
+        for feature_id in removed_ids:
+            self._delete_feature_from_api(feature_id, layer)
+
+    def _on_features_modified(self, layer: QgsVectorLayer, attribute_changes: Dict[int, Dict[int, Any]], geometry_type: str) -> None:
         """
-        for feature in removed_ids:
-            self._delete_feature_to_api(feature, layer)
+        Обработчик события изменения атрибутов объектов.
 
-    def _on_features_modified(self, layer, attribute_changes, geometry_type):
-        """
-        Обработка изменения атрибутов объектов в слое.
-
-        :param layer: слой, в котором изменены объекты
-        :param attribute_changes: словарь изменений атрибутов {feature_id: {field_index: (old_value, new_value)}}
-        :param geometry_type: тип геометрии
+        :param layer: слой QGIS
+        :param attribute_changes: словарь изменений атрибутов
+        :param geometry_type: тип геометрии слоя
         """
         for feature_id in attribute_changes:
-            self._log(f"Мог быть изменён объект (атрибуты) типа "
-                      f"«{geometry_type}» с "
-                      f"ID {feature_id}, но пока нет метода для отправки "
-                      f"данных на API")
+            self._log(f"Мог быть изменён объект (атрибуты) типа «{geometry_type}» с ID {feature_id}, но пока нет метода для отправки данных на API")
 
-    def _on_geometry_modified(self, layer, geometry_changes, geometry_type):
+    def _on_geometry_modified(self, layer: QgsVectorLayer, geometry_changes: Dict[int, QgsGeometry], geometry_type: str) -> None:
         """
-        Обработка изменения геометрии объектов в слое.
+        Обработчик события изменения геометрии объектов.
 
-        :param layer: слой, в котором изменена геометрия объектов
-        :param geometry_changes: словарь изменений геометрии {feature_id: QgsGeometry}
-        :param geometry_type: тип геометрии
+        :param layer: слой QGIS
+        :param geometry_changes: словарь изменений геометрии
+        :param geometry_type: тип геометрии слоя
         """
         for feature_id in geometry_changes:
-            self._log(f"Мог быть изменён объект (атрибуты) типа "
-                      f"«{geometry_type}» с "
-                      f"ID {feature_id}, но пока нет метода для отправки "
-                      f"данных на API")
+            self._log(f"Мог быть изменён объект (геометрия) типа «{geometry_type}» с ID {feature_id}, но пока нет метода для отправки данных на API")
 
-    def _log(self, message: str):
+    def _log(self, message: str) -> None:
         """
-        Записывает информационное сообщение в лог QGIS.
+        Записывает сообщение в лог QGIS.
 
-        :param message: текст сообщения
+        :param message: сообщение для записи
         """
         QgsMessageLog.logMessage(message, "SyncPlugin", level=Qgis.Info)
 
-    def sync_layers(self):
+    def sync_layers(self) -> None:
         """
-        Основная функция синхронизации.
-        Загружает объекты из API, создаёт или получает слои, очищает их,
-        добавляет загруженные объекты, и подписывается на события изменений.
+        Основная функция синхронизации слоёв с API.
+        Загружает данные из API и обновляет слои в QGIS.
         """
         try:
             response = requests.get("http://localhost:8000/features")
@@ -212,7 +243,7 @@ class SyncPlugin:
             data = response.json()
             self._log("Данные успешно загружены из API.")
         except requests.RequestException as error:
-            self._log(f"Ошибка запроса к API: {error}")
+            self._log(f"Ошибка запроса к API: {error}", Qgis.Critical)
             return
 
         self.point_layer = self._get_or_create_layer("Points_synced", "Point")
@@ -225,27 +256,21 @@ class SyncPlugin:
             "Polygon": self.polygon_layer,
         }
 
-        # Очистка данных слоев
         for layer in geometry_type_to_layer.values():
-            layer.dataProvider().truncate()
-            layer.triggerRepaint()
+            if layer:
+                layer.dataProvider().truncate()
+                layer.triggerRepaint()
 
         self._connect_layer_signals()
 
-        # Добавление объектов из API в слои
         for feature_data in data.get("features", []):
             geom_type = feature_data["geometry"]["type"]
             coordinates = feature_data["geometry"]["coordinates"]
             properties = feature_data.get("properties", {})
             external_id = properties.get("id", 0)
             layer = geometry_type_to_layer.get(geom_type)
-            layer_name = layer.name()
-            self._log(
-                f"{layer.name()=}\n"
-                f"{layer_name=}"
-            )
             if not layer:
-                self._log(f"Пропущен объект с типом геометрии {geom_type} — слой не найден.")
+                self._log(f"Пропущен объект с типом геометрии {geom_type} — слой не найден.", Qgis.Critical)
                 continue
 
             qgs_feature = QgsFeature()
@@ -258,36 +283,33 @@ class SyncPlugin:
             elif geom_type == "Polygon":
                 qgs_feature.setGeometry(QgsGeometry.fromPolygonXY([[QgsPointXY(*pt) for pt in coordinates[0]]]))
             else:
-                self._log(f"Неизвестный тип геометрии: {geom_type}")
+                self._log(f"Неизвестный тип геометрии: {geom_type}",
+                    Qgis.Warning)
                 continue
 
             qgs_feature.setAttribute("name", properties.get("name", ""))
             qgs_feature.setAttribute("type", properties.get("type", ""))
             qgs_feature.setAttribute("id", external_id)
-            success = layer.dataProvider().addFeature(
-                qgs_feature)
+            success = layer.dataProvider().addFeature(qgs_feature)
             if success:
                 internal_id = qgs_feature.id()
+                layer_name = layer.name()
                 if layer_name not in self._ids:
                     self._ids[layer_name] = {}
                 self._ids[layer_name][internal_id] = external_id
-                self._log(
-                    f"Объект добавлен: QGIS-ID={layer_name}/{internal_id} → "
-                    f"API-ID"
-                    f"={external_id}"
-                )
+                self._log(f"Объект добавлен: QGIS-ID={layer_name}/{internal_id} → API-ID={external_id}")
             else:
-                self._log("Не удалось добавить объект в слой.")
+                self._log("Не удалось добавить объект в слой.", Qgis.Critical)
 
         self._log("Слои успешно синхронизированы.")
 
     def _get_or_create_layer(self, name: str, geometry_type: str) -> QgsVectorLayer:
         """
-        Получает существующий слой по имени или создаёт новый временный слой.
+        Получает существующий или создает новый векторный слой.
 
         :param name: имя слоя
-        :param geometry_type: тип геометрии слоя ("Point", "LineString", "Polygon")
-        :return: объект QgsVectorLayer
+        :param geometry_type: тип геометрии слоя
+        :return: векторный слой QGIS
         """
         for layer in QgsProject.instance().mapLayers().values():
             if layer.name() == name:
@@ -306,16 +328,16 @@ class SyncPlugin:
         self._log(f"Создан новый слой '{name}' с типом геометрии {geometry_type}.")
         return vector_layer
 
-    def _feature_to_geojson_dict(self, feature: QgsFeature) -> dict | None:
+    def _feature_to_geojson_dict(self, feature: QgsFeature) -> Optional[Dict[str, Any]]:
         """
-        Преобразует QgsFeature в словарь в формате GeoJSON для отправки в API.
+        Конвертирует объект QGIS в словарь в формате GeoJSON.
 
-        :param feature: объект QgsFeature
-        :return: словарь с данными GeoJSON или None при ошибке
+        :param feature: объект QGIS
+        :return: словарь в формате GeoJSON или None в случае ошибки
         """
         geometry = feature.geometry()
         if geometry is None or geometry.isEmpty():
-            self._log("Пустая или отсутствующая геометрия в объекте.")
+            self._log("Пустая или отсутствующая геометрия в объекте.", Qgis.Critical)
             return None
 
         geom_type_display = QgsWkbTypes.displayString(geometry.wkbType())
@@ -331,16 +353,8 @@ class SyncPlugin:
             polygon = geometry.asPolygon()
             coordinates = [[list(pt) for pt in polygon[0]]] if polygon else []
         else:
-            self._log(f"Неподдерживаемый тип геометрии: {geom_type_display}")
+            self._log(f"Неподдерживаемый тип геометрии: {geom_type_display}", Qgis.Critical)
             return None
-
-        name_attr = feature["name"]
-        if not isinstance(name_attr, (str, int, float, type(None))):
-            name_attr = str(name_attr)
-
-        type_attr = feature["type"]
-        if not isinstance(type_attr, (str, int, float, type(None))):
-            type_attr = str(type_attr)
 
         return {
             "geometry": {
@@ -348,66 +362,55 @@ class SyncPlugin:
                 "coordinates": coordinates,
             },
             "properties": {
-                "name": name_attr,
-                "type": type_attr,
+                "name": str(feature["name"]),
+                "type": str(feature["type"]),
             },
         }
 
-    def _send_feature_to_api(self, feature: QgsFeature):
+    def _send_feature_to_api(self, feature: QgsFeature) -> Optional[int]:
         """
-        Отправляет объект в REST API.
+        Отправляет объект в API и возвращает полученный ID.
 
-        :param feature: объект QgsFeature для отправки
+        :param feature: объект QGIS для отправки
+        :return: ID объекта из API или None в случае ошибки
         """
         data = self._feature_to_geojson_dict(feature)
         if not data:
-            self._log("Не удалось сформировать объект для отправки в API.")
-            return
+            self._log("Не удалось сформировать объект для отправки в API.", Qgis.Critical)
+            return None
 
         try:
-            response = requests.post(
-                "http://localhost:8000/features",
-                json=data,
-                timeout=5,
-            )
+            response = requests.post("http://localhost:8000/features", json=data, timeout=5)
             if response.status_code == 201:
                 self._log("Объект успешно отправлен в API.")
-                return response.json()["id"]
+                return response.json().get("id")
             else:
-                self._log(f"Ошибка API: код {response.status_code}, ответ: {response.text}")
+                self._log(f"Ошибка API: код {response.status_code}, ответ: {response.text}", Qgis.Critical)
         except requests.RequestException as error:
-            self._log(f"Ошибка сети при отправке запроса: {error}")
+            self._log(f"Ошибка сети при отправке запроса: {error}", Qgis.Critical)
+        return None
 
-    def _delete_feature_to_api(
-            self,
-            internal_id_feature: int,
-            layer: QgsVectorLayer
-    ):
+    def _delete_feature_from_api(self, internal_id_feature: int, layer: QgsVectorLayer) -> None:
         """
-        Удаляет объект в REST API по внутреннему ID и слою.
+        Удаляет объект из API по его ID.
 
-        :param internal_id_feature: внутренний ID объекта для удаления
-        :param layer: слой, из которого удалён объект
+        :param internal_id_feature: внутренний ID объекта в QGIS
+        :param layer: слой, содержащий объект
         """
         external_id = None
         layer_name = layer.name()
-        if layer_name in self._ids and internal_id_feature in self._ids[
-            layer_name]:
+        if layer_name in self._ids and internal_id_feature in self._ids[layer_name]:
             external_id = self._ids[layer_name].pop(internal_id_feature)
 
         if external_id is None:
-            self._log(
-                f"Не найден внешний ID для внутреннего ID {internal_id_feature} в слое {layer.name()}"
-            )
+            self._log(f"Не найден внешний ID для внутреннего ID {internal_id_feature} в слое {layer.name()}", Qgis.Critical)
             return
+
         try:
-            response = requests.delete(
-                f"http://localhost:8000/features/{external_id}",
-                timeout=5,
-            )
+            response = requests.delete(f"http://localhost:8000/features/{external_id}", timeout=5)
             if response.status_code == 204:
                 self._log("Объект успешно удален в API.")
             else:
-                self._log(f"Ошибка API: код {response.status_code}, ответ: {response.text}")
+                self._log(f"Ошибка API: код {response.status_code}, ответ: {response.text}", Qgis.Critical)
         except requests.RequestException as error:
-            self._log(f"Ошибка сети при отправке запроса: {error}")
+            self._log(f"Ошибка сети при отправке запроса: {error}", Qgis.Warning)
