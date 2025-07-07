@@ -29,7 +29,7 @@ class SyncPlugin:
         self.line_layer = None
         self.polygon_layer = None
         self.sync_action = None
-        self._ids = {}
+        self._ids: dict[QgsVectorLayer, dict[int, int]] = {}
 
     def initGui(self):
         """
@@ -56,32 +56,70 @@ class SyncPlugin:
             (self.line_layer, "LineString"),
             (self.polygon_layer, "Polygon"),
         ]:
-            if layer:
-                layer.editingStarted.connect(
-                    lambda l=layer, t=geometry_type: self._log(f"Начато редактирование слоя {t}")
-                )
+            if not layer:
+                continue
 
-                layer.committedFeaturesAdded.connect(
-                    lambda layer_id, added, l=layer, t=geometry_type: self._on_features_added(l, added, t)
-                )
+            try:
+                layer.editingStarted.disconnect()
+                layer.committedFeaturesAdded.disconnect()
+                layer.committedFeaturesRemoved.disconnect()
+                layer.committedAttributeValuesChanges.disconnect()
+                layer.committedGeometriesChanges.disconnect()
+                layer.editingStopped.disconnect()
+            except Exception:
+                pass  # В первый раз сигнал может быть не подключен
 
-                layer.committedFeaturesRemoved.connect(
-                    lambda layer_id, removed, l=layer, t=geometry_type: self._on_features_removed(l, removed, t)
+            layer.editingStarted.connect(
+                lambda l=layer, t=geometry_type: self._log(
+                    f"Начато редактирование слоя {t}"
                 )
+            )
 
-                layer.committedAttributeValuesChanges.connect(
-                    lambda layer_id, attr_changes, l=layer, t=geometry_type: self._on_features_modified(l, attr_changes, t)
+            layer.committedFeaturesAdded.connect(
+                lambda
+                        layer_id,
+                        added,
+                        l=layer,
+                        t=geometry_type: self._on_features_added(l, added, t)
+            )
+            layer.committedFeaturesRemoved.connect(
+                lambda
+                        layer_id,
+                        removed,
+                        l=layer,
+                        t=geometry_type: self._on_features_removed(
+                    l,
+                    removed,
+                    t
                 )
-
-                layer.committedGeometriesChanges.connect(
-                    lambda layer_id, geom_changes, l=layer, t=geometry_type: self._on_geometry_modified(l, geom_changes, t)
+            )
+            layer.committedAttributeValuesChanges.connect(
+                lambda
+                        layer_id,
+                        attr_changes,
+                        l=layer,
+                        t=geometry_type: self._on_features_modified(
+                    l,
+                    attr_changes,
+                    t
                 )
-
-                layer.editingStopped.connect(
-                    lambda l=layer, t=geometry_type: self._log(
-                        f"Закончено редактирование слоя {t}"
-                    )
+            )
+            layer.committedGeometriesChanges.connect(
+                lambda
+                        layer_id,
+                        geom_changes,
+                        l=layer,
+                        t=geometry_type: self._on_geometry_modified(
+                    l,
+                    geom_changes,
+                    t
                 )
+            )
+            layer.editingStopped.connect(
+                lambda l=layer, t=geometry_type: self._log(
+                    f"Закончено редактирование слоя {t}"
+                )
+            )
 
     def _on_features_added(self, layer, added_features, geometry_type):
         """
@@ -104,7 +142,10 @@ class SyncPlugin:
                 continue
 
             success = layer.dataProvider().changeAttributeValues({feature.id(): {id_idx: _id}})
-            self._ids[feature.id()]=_id
+            layer_name = layer.name()
+            if layer_name not in self._ids:
+                self._ids[layer_name] = {}
+            self._ids[layer_name][feature.id()]=_id
             if success:
                 self._log(f"Добавлен объект типа «{geometry_type}» с ID {_id}")
             else:
@@ -121,8 +162,7 @@ class SyncPlugin:
         :param geometry_type: тип геометрии
         """
         for feature in removed_ids:
-            self._delete_feature_to_api(feature)
-            self._log(f"Удалён объект типа «{geometry_type}» с ID {feature}")
+            self._delete_feature_to_api(feature, layer)
 
     def _on_features_modified(self, layer, attribute_changes, geometry_type):
         """
@@ -133,7 +173,10 @@ class SyncPlugin:
         :param geometry_type: тип геометрии
         """
         for feature_id in attribute_changes:
-            self._log(f"Изменён объект (атрибуты) типа «{geometry_type}» с ID {feature_id}")
+            self._log(f"Мог быть изменён объект (атрибуты) типа "
+                      f"«{geometry_type}» с "
+                      f"ID {feature_id}, но пока нет метода для отправки "
+                      f"данных на API")
 
     def _on_geometry_modified(self, layer, geometry_changes, geometry_type):
         """
@@ -144,7 +187,10 @@ class SyncPlugin:
         :param geometry_type: тип геометрии
         """
         for feature_id in geometry_changes:
-            self._log(f"Изменён объект (геометрия) типа «{geometry_type}» с ID {feature_id}")
+            self._log(f"Мог быть изменён объект (атрибуты) типа "
+                      f"«{geometry_type}» с "
+                      f"ID {feature_id}, но пока нет метода для отправки "
+                      f"данных на API")
 
     def _log(self, message: str):
         """
@@ -193,6 +239,11 @@ class SyncPlugin:
             properties = feature_data.get("properties", {})
             external_id = properties.get("id", 0)
             layer = geometry_type_to_layer.get(geom_type)
+            layer_name = layer.name()
+            self._log(
+                f"{layer.name()=}\n"
+                f"{layer_name=}"
+            )
             if not layer:
                 self._log(f"Пропущен объект с типом геометрии {geom_type} — слой не найден.")
                 continue
@@ -217,9 +268,13 @@ class SyncPlugin:
                 qgs_feature)
             if success:
                 internal_id = qgs_feature.id()
-                self._ids[internal_id] = external_id
+                if layer_name not in self._ids:
+                    self._ids[layer_name] = {}
+                self._ids[layer_name][internal_id] = external_id
                 self._log(
-                    f"Объект добавлен: QGIS-ID={internal_id} → API-ID={external_id}"
+                    f"Объект добавлен: QGIS-ID={layer_name}/{internal_id} → "
+                    f"API-ID"
+                    f"={external_id}"
                 )
             else:
                 self._log("Не удалось добавить объект в слой.")
@@ -323,25 +378,36 @@ class SyncPlugin:
         except requests.RequestException as error:
             self._log(f"Ошибка сети при отправке запроса: {error}")
 
-
-    def _delete_feature_to_api(self, internal_id_feature: int):
+    def _delete_feature_to_api(
+            self,
+            internal_id_feature: int,
+            layer: QgsVectorLayer
+    ):
         """
-        Удаляет объект в REST API.
+        Удаляет объект в REST API по внутреннему ID и слою.
 
-        :param internal_id_feature: внутренний id объекта для удаления
+        :param internal_id_feature: внутренний ID объекта для удаления
+        :param layer: слой, из которого удалён объект
         """
-        self._log(f"{self._ids=}")
-        feature_id = self._ids[internal_id_feature]
+        external_id = None
+        layer_name = layer.name()
+        if layer_name in self._ids and internal_id_feature in self._ids[
+            layer_name]:
+            external_id = self._ids[layer_name].pop(internal_id_feature)
+
+        if external_id is None:
+            self._log(
+                f"Не найден внешний ID для внутреннего ID {internal_id_feature} в слое {layer.name()}"
+            )
+            return
         try:
             response = requests.delete(
-                f"http://localhost:8000/features/{feature_id}",
+                f"http://localhost:8000/features/{external_id}",
                 timeout=5,
             )
             if response.status_code == 204:
                 self._log("Объект успешно удален в API.")
-                return response.json()["id"]
             else:
                 self._log(f"Ошибка API: код {response.status_code}, ответ: {response.text}")
         except requests.RequestException as error:
             self._log(f"Ошибка сети при отправке запроса: {error}")
-
