@@ -1,4 +1,21 @@
 services:
+  api:
+    build: .
+    container_name: api
+    command: >
+      sh -c "./wait-for-it.sh postgres-db:5432 --
+             alembic upgrade head &&
+             python -m uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload"
+    volumes:
+      - .:/src
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    restart: unless-stopped
+    networks:
+      - network_app
+
   postgres:
     image: postgis/postgis:15-3.3-alpine
     container_name: postgres-db
