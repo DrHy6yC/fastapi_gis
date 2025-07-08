@@ -7,6 +7,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     # Настройка среды
     MODE: Literal["TEST", "LOCAL", "DEV", "PROD"] = Field(default="LOCAL")
+    DB_HOST: str = Field(default="")
 
     # Настройки БД
     PG_HOST: str = Field(default="")
@@ -25,7 +26,7 @@ class Settings(BaseSettings):
         return (
             f"postgresql+asyncpg:"
             f"//{self.PG_USER}:{self.PG_PASSWORD}@"
-            f"{self.PG_HOST}:{self.PG_PORT}/{self.PG_DB_NAME}"
+            f"{self.DB_HOST}:{self.PG_PORT}/{self.PG_DB_NAME}"
         )
 
     # Настройки откуда будут браться данные переменных окружения

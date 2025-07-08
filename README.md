@@ -1,9 +1,79 @@
-# Тестовое задание Python/GIS
+# FastAPI GIS
+***
+FastAPI GIS — это серверное API для хранения и обработки геопространственных данных с использованием FastAPI, PostgreSQL и расширения PostGIS. Проект интегрируется с QGIS через специализированный плагин.
+Это удобное решение для:
+- хранения(Postgres)
+- обработки(FastApi) 
+- визуализации геопространственных данных(QGIS + плагин-расширение).
+### Назначение проекта:
+- Хранение данных в PostgreSQL + PostGIS.
+- Обработка и доступ к данным через FastAPI.
+- Визуализация и работа с данными в QGIS посредством плагина.
+***
+# Возможности
+- Работа с точками, линиями и полигонами через REST API.
+- Пространственные запросы с поддержкой PostGIS.
+- Интерактивная документация API (Swagger UI и ReDoc).
+- Интеграция с QGIS 3.40+ через плагин на PyQGIS API.
+***
+
+# Требования
+- Python 3.12+
+- PostgreSQL 15+ с расширением PostGIS
+- Docker(опционально для быстрого запуска)
+***
+# Установка
+
+## 1. Клонирование репозитория
+    git clone https://github.com/DrHy6yC/fastapi_gis.git
+    cd fastapi_gis
+
+## 2. Виртуальное окружение и зависимости
+    python -m venv venv
+    source venv/bin/activate  # Linux/MacOS
+    venv\Scripts\activate     # Windows
+    pip install -r requirements.txt
+## 3. Настройка базы данных
+Убедитесь, что установлен PostgreSQL с расширением PostGIS. Создайте базу данных:
+``````
+CREATE DATABASE gis_db;
+\c gis_db
+CREATE EXTENSION postgis;
+``````
+## 4. Переменные окружения
+- Создайте файл .env в корне проекта и заполните его по примеру .env.example:
+
+## 5. Запуск приложения
+    python -m uvicorn src.main:app
+- API будет доступно по адресу: http://localhost:8000
+
+## Документация API
+### После запуска сервера доступны:
+- Swagger UI: http://localhost:8000/docs
+- ReDoc: http://localhost:8000/redoc
+
+# Запуск через Docker
+## Если хотите развернуть проект в Docker:
+- Настроить переменные окружения
+``````
+docker-compose up -d
+``````
+- Приложение будет доступно на http://localhost:8000, а PostgreSQL — на порту 5432.
+
+## Примеры запросов
+![img.png](img.png)
+![img_1.png](img_1.png)
+![img_2.png](img_2.png)
+![img_3.png](img_3.png)
+
+![img_4.png](img_4.png)
 
 ## Технологии:
-- Бэкенд: FastAPI
-- Плагин: PyQGIS API
+- Бэкенд: FastAPI, SQLAlchemy, Alembic
+- БД: PostgreSQL + PostGIS
+- Плагин: PyQGIS API (QGIS 3.40+)
 
+# Тестовое задание Python/GIS
 
 ## Часть 1: Бэкенд-сервис для хранения геометрий
 ### Задача: Написать веб-сервис на FastAPI, который будет служить хранилищем для геометрических объектов.

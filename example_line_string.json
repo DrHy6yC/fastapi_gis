@@ -8,7 +8,7 @@
     ]
   },
   "properties": {
-    "name": "Test LineString",
-    "type": "Example"
+    "name": "Пример маршрута по Краснодару",
+    "type": "LineString"
   }
 }

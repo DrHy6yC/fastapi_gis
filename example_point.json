@@ -4,7 +4,7 @@
     "coordinates": [38.976, 45.035]
   },
   "properties": {
-    "name": "Test point",
-    "type": "Example"
+    "name": "Краснодар",
+    "type": "Point"
   }
 }

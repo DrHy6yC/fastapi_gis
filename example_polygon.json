@@ -12,7 +12,7 @@
     ]
   },
   "properties": {
-    "name": "Test Polygon",
-    "type": "Example"
+    "name": "Центральная зона Краснодара",
+    "type": "Polygon"
   }
 }
