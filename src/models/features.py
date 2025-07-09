@@ -1,6 +1,7 @@
 from geoalchemy2 import Geometry
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
+
 from src.connectors.database_init import BaseORM
 
 

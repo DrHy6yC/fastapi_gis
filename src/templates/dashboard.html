@@ -1,0 +1,153 @@
+{% extends "index.html" %}
+
+{% block title %}
+Дашбоард всех объектов
+{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+    table {
+        border-collapse: collapse;
+        width: 100%;
+    }
+    th, td {
+        border: 1px solid #999;
+        padding: 0.5rem;
+        text-align: left;
+    }
+    th {
+        background-color: #eee;
+    }
+</style>
+{% endblock %}
+
+{% block body %}
+<!-- Header -->
+<section id="header">
+    <div class="inner">
+        <span class="icon solid major fa-cloud"></span>
+        <h1>Привет, меня зовут <strong>Денис</strong>.<br />
+        Это приложение создано для тестового задания</h1>
+        <p><br />
+        API умеет добавлять и удалять объекты трех типов (Точки, Линии и Полигоны),
+        так же можно получить все объекты в формате FeatureCollection.</p>
+        <p><br />
+        <a href="http://127.0.0.1:8000/docs#" class="button href">Документация/Swagger по API</a></p>
+        <p><br />
+        Еще можно запросить статистику<br />
+        и посмотреть прямо в браузере!</p>
+        <ul class="actions special">
+            <li><a href="#one" class="button scrolly">К объектам!</a></li>
+        </ul>
+    </div>
+</section>
+
+<!-- One -->
+<section id="one" class="main style1">
+    <div class="container">
+        <h2>Количество объектов по типам</h2>
+        <canvas id="geometryChart" width="800" height="400"></canvas>
+
+        <script>
+            async function fetchAndRenderChart() {
+            try {
+                const response = await fetch('/stats');
+                const stats_data = await response.json();
+
+                const ctx = document.getElementById('geometryChart').getContext('2d');
+
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: Object.keys(stats_data),
+                        datasets: [{
+                            label: 'Количество объектов',
+                            data: Object.values(stats_data),
+                            backgroundColor: ['red', 'green', 'blue']
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    stepSize: 1,
+                                    callback: function(value) {
+                                        if (Number.isInteger(value)) {
+                                            return value;
+                                        }
+                                        return '';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error('Ошибка при загрузке данных:', error);
+            }
+            }
+
+            fetchAndRenderChart();
+        </script>
+    </div>
+</section>
+
+<!-- Two -->
+<section id="two" class="main style2">
+    <div class="container">
+        <h2>Объекты в БД</h2>
+        <p>Объекты отсортированы в обратном порядке по добавлению</p>
+        <table id="features-table">
+            <thead>
+                <tr>
+                    <th>Название</th>
+                    <th>Тип объекта</th>
+                    <th>Координаты</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Здесь будут строки -->
+            </tbody>
+        </table>
+        <script>
+            async function renderTable() {
+                try {
+                    const response = await fetch('/features');
+                    const features_data = await response.json();
+                    const tbody = document.querySelector("#features-table tbody");
+                    tbody.innerHTML = ""; // очистить
+
+                    // сортируем по убыванию id
+                    const sortedFeatures = features_data.features.sort((a, b) => b.properties.id - a.properties.id);
+
+                    for (const feature of sortedFeatures) {
+                        const tr = document.createElement("tr");
+
+                        // Название
+                        const tdName = document.createElement("td");
+                        tdName.textContent = feature.properties.name;
+                        tr.appendChild(tdName);
+
+                        // Тип объекта
+                        const tdType = document.createElement("td");
+                        tdType.textContent = feature.geometry.type;
+                        tr.appendChild(tdType);
+
+                        // Координаты
+                        const tdCoords = document.createElement("td");
+                        tdCoords.textContent = feature.geometry.coordinates;
+                        tr.appendChild(tdCoords);
+
+                        tbody.appendChild(tr);
+                    }
+                } catch (error) {
+                    console.error('Ошибка при загрузке данных:', error);
+                }
+            }
+            renderTable();
+        </script>
+    </div>
+</section>
+{% endblock %}

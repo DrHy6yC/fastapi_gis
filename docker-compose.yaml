@@ -16,7 +16,7 @@ services:
     networks:
       - network_app
 
-  postgres:
+  db:
     image: postgis/postgis:15-3.3-alpine
     container_name: postgres-db
     environment:

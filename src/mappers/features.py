@@ -1,5 +1,6 @@
 from geoalchemy2.shape import from_shape, to_shape
 from shapely.geometry import shape
+
 from src.models.features import FeaturesORM
 from src.schemas.feature import (
     FeaturePropertiesID,

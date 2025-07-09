@@ -2,6 +2,7 @@ from geoalchemy2.functions import GeometryType
 from sqlalchemy import delete, func, select
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from src.exeptions.error import ObjectNotFoundError
 from src.mappers.features import FeatureMapper
 from src.models.features import FeaturesORM

@@ -9,6 +9,8 @@ from contextlib import asynccontextmanager
 import uvicorn
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+
 from src.api.features import router as features_router
 from src.api.stats import router as stats_router
 
@@ -21,6 +23,8 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 app.include_router(features_router)
 app.include_router(stats_router)
+
+app.mount("/static", StaticFiles(directory="src/static"), name="static")
 
 
 if __name__ == "__main__":

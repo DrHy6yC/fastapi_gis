@@ -6,6 +6,7 @@ import pytest
 
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
+
 from src.api.dependencies import get_db
 from src.config import settings
 from src.connectors.database_init import (
