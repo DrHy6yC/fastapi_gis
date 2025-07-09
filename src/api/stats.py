@@ -8,9 +8,7 @@ router = APIRouter(prefix="", tags=["Статистика"])
 templates = Jinja2Templates(directory="src/templates")
 
 
-@router.get(
-    "/", response_class=HTMLResponse, summary="Главная/Дашбоард"
-)
+@router.get("/", response_class=HTMLResponse, summary="Главная/Дашбоард")
 async def read_root(request: Request) -> HTMLResponse:
     return templates.TemplateResponse("dashboard.html", {"request": request})
 
