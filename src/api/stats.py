@@ -3,6 +3,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from src.api.dependencies import DBDep
+from src.config import settings
 
 
 router = APIRouter(prefix="", tags=["Статистика"])
@@ -11,7 +12,10 @@ templates = Jinja2Templates(directory="src/templates")
 
 @router.get("/", response_class=HTMLResponse, summary="Главная/Дашбоард")
 async def read_root(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse("dashboard.html", {"request": request})
+    return templates.TemplateResponse(
+        "dashboard.html",
+        {"request": request, "root_path": settings.ROOT_PATH}
+    )
 
 
 @router.get(path="/stats", summary="Получить статистику по типам")
