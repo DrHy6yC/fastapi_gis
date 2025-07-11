@@ -52,7 +52,7 @@
         <script>
             async function fetchAndRenderChart() {
             try {
-                const response = await fetch('/stats');
+                const response = await fetch('{{ base_path }}/stats');
                 const stats_data = await response.json();
 
                 const ctx = document.getElementById('geometryChart').getContext('2d');
@@ -114,7 +114,7 @@
         <script>
             async function renderTable() {
                 try {
-                    const response = await fetch('/features');
+                    const response = await fetch('{{ base_path }}/features');
                     const features_data = await response.json();
                     const tbody = document.querySelector("#features-table tbody");
                     tbody.innerHTML = ""; // очистить
