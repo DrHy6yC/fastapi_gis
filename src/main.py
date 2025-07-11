@@ -12,7 +12,7 @@ import uvicorn
 
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
-from starlette.middleware.base import BaseHTTPMiddleware
+
 
 from src.api.features import router as features_router
 from src.api.stats import router as stats_router
