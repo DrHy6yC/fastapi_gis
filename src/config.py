@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     PG_DB_NAME: str = Field(default="")
     PG_DATA: str = Field(default="")
 
+    # Настройки сервера
+    HOST: str = Field(default="")
+
     @property
     def db_url(self) -> str:
         """
