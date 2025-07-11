@@ -19,6 +19,7 @@ class Settings(BaseSettings):
 
     # Настройки сервера
     HOST: str = Field(default="")
+    ROOT_PATH: str = Field(default="")
 
     @property
     def db_url(self) -> str:

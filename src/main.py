@@ -2,6 +2,8 @@ import sys
 
 from pathlib import Path
 
+from src.config import settings
+
 sys.path.append(str(Path(__file__).parent.parent))
 
 from contextlib import asynccontextmanager
@@ -20,7 +22,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(lifespan=lifespan, root_path=settings.ROOT_PATH)
 app.include_router(features_router)
 app.include_router(stats_router)
 
