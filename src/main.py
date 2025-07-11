@@ -23,22 +23,12 @@ async def lifespan(app: FastAPI):
     yield
 
 
-class RootPathMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        forwarded_prefix = request.headers.get("x-forwarded-prefix")
-        if forwarded_prefix:
-            request.scope["root_path"] = forwarded_prefix
-        return await call_next(request)
-
-
 app = FastAPI(lifespan=lifespan, root_path=settings.ROOT_PATH)
-
-app.add_middleware(RootPathMiddleware)
 
 app.include_router(features_router)
 app.include_router(stats_router)
 
-app.mount("/static", StaticFiles(directory="src/static"), name="static")
+app.mount(f"{settings.ROOT_PATH}/static", StaticFiles(directory="src/static"), name="static")
 
 
 if __name__ == "__main__":
