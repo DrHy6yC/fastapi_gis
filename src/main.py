@@ -28,7 +28,7 @@ app = FastAPI(lifespan=lifespan, root_path=settings.ROOT_PATH)
 app.include_router(features_router)
 app.include_router(stats_router)
 
-app.mount(f"{settings.ROOT_PATH}/static", StaticFiles(directory="src/static"), name="static")
+app.mount(f"/static", StaticFiles(directory="src/static"), name="static")
 
 
 if __name__ == "__main__":
