@@ -15,6 +15,7 @@ from fastapi.staticfiles import StaticFiles
 
 
 from src.api.features import router as features_router
+from  src.api.plugin import router as plugin_router
 from src.api.stats import router as stats_router
 
 
@@ -26,14 +27,10 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan,root_path=settings.ROOT_PATH)
 
 app.include_router(features_router)
+app.include_router(plugin_router)
 app.include_router(stats_router)
 
 app.mount(f"/static", StaticFiles(directory="src/static"), name="static")
-
-@app.get("/static")
-async def homepage(request: Request):
-    js_url = request.url_for("static", path="assets/js/main.js")
-    return {"js_url": js_url}
 
 
 if __name__ == "__main__":
