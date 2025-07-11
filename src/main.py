@@ -30,6 +30,10 @@ app.include_router(stats_router)
 
 app.mount(f"/static", StaticFiles(directory="src/static"), name="static")
 
+@app.get("/static")
+async def homepage(request: Request):
+    js_url = request.url_for("static", path="assets/js/main.js")
+    return {"js_url": js_url}
 
 if __name__ == "__main__":
     uvicorn.run(app="main:app", reload=True)
