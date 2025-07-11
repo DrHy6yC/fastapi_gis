@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -13,7 +14,9 @@ templates = Jinja2Templates(directory="src/templates")
 @router.get("/", response_class=HTMLResponse, summary="Главная/Дашбоард")
 async def read_root(request: Request) -> HTMLResponse:
     host = settings.HOST
-    return templates.TemplateResponse("dashboard.html", {"request": request, "host": host})
+    url = f"http://{host}:8000/docs#"
+    logging.info(f"url")
+    return templates.TemplateResponse("dashboard.html", {"request": request})
 
 
 @router.get(path="/stats", summary="Получить статистику по типам")
