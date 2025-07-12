@@ -5,6 +5,7 @@ SyncPlugin — плагин QGIS для синхронизации вектор�
 изменений (добавление и удаление объектов) обратно на сервер.
 
 Версия QGIS: >= 3.40
+TODO: Сделать настройку url для разных аpi
 """
 import os
 import requests
@@ -243,7 +244,7 @@ class SyncPlugin:
         Загружает данные из API и обновляет слои в QGIS.
         """
         try:
-            response = requests.get("http://localhost:8000/features")
+            response = requests.get("http://localhost/features")
             response.raise_for_status()
             data = response.json()
             self._log("Данные успешно загружены из API.")
@@ -385,7 +386,7 @@ class SyncPlugin:
             return None
 
         try:
-            response = requests.post("http://localhost:8000/features", json=data, timeout=5)
+            response = requests.post("http://localhost/features", json=data, timeout=5)
             if response.status_code == 201:
                 self._log("Объект успешно отправлен в API.")
                 return response.json().get("id")
@@ -412,7 +413,7 @@ class SyncPlugin:
             return
 
         try:
-            response = requests.delete(f"http://localhost:8000/features/{external_id}", timeout=5)
+            response = requests.delete(f"http://localhost/features/{external_id}", timeout=5)
             if response.status_code == 204:
                 self._log("Объект успешно удален в API.")
             else:
